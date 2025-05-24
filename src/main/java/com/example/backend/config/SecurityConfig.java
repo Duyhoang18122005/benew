@@ -27,6 +27,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/game-players/available").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/game-players").permitAll()
+                .requestMatchers("/api/games").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .anyRequest().authenticated()
             )

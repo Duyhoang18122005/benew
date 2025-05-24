@@ -26,6 +26,9 @@ public class User {
     private String phoneNumber;
     private String address;
 
+    @Column(nullable = false)
+    private java.math.BigDecimal walletBalance = java.math.BigDecimal.ZERO;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")

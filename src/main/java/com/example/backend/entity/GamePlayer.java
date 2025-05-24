@@ -26,9 +26,8 @@ public class GamePlayer {
     @Column(nullable = false)
     private String rank; // Rank trong game (ví dụ: Gold, Diamond, etc.)
 
-    @NotBlank(message = "Role is required")
-    @Column(nullable = false)
-    private String role; // Vai trò trong game (ví dụ: Mid, Support, etc.)
+    @Column
+    private String role; // Vai trò trong game (ví dụ: Mid, Support, etc.) - Có thể null nếu game không cần role
 
     @NotBlank(message = "Server is required")
     @Column(nullable = false)
@@ -79,6 +78,10 @@ public class GamePlayer {
         }
         if (winRate != null && (winRate < 0 || winRate > 100)) {
             throw new IllegalArgumentException("Win rate must be between 0 and 100");
+        }
+        // Kiểm tra role nếu game yêu cầu role
+        if (game != null && game.getHasRoles() && (role == null || role.trim().isEmpty())) {
+            throw new IllegalArgumentException("Role is required for this game");
         }
     }
 } 

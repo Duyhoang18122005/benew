@@ -3,6 +3,7 @@ package com.example.backend.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.Set;
+import java.util.List;
 
 @Data
 @Entity
@@ -35,6 +36,15 @@ public class Game {
 
     @Column
     private String requirements; // System requirements
+
+    @Column(nullable = false)
+    private Boolean hasRoles; // Xác định game có cần role hay không
+
+    @ElementCollection
+    private List<String> availableRoles; // Danh sách role có sẵn cho game (nếu có)
+
+    @ElementCollection
+    private List<String> availableRanks; // Danh sách rank cho từng game
 
     @ManyToMany(mappedBy = "applicableGames")
     private Set<Promotion> promotions;

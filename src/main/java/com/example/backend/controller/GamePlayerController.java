@@ -13,6 +13,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Arrays;
+import com.example.backend.entity.Game;
+import com.example.backend.repository.GameRepository;
+import com.example.backend.exception.ResourceNotFoundException;
 
 @RestController
 @RequestMapping("/api/game-players")
@@ -20,9 +24,11 @@ import java.util.List;
 @Tag(name = "Game Player", description = "Game player management APIs")
 public class GamePlayerController {
     private final GamePlayerService gamePlayerService;
+    private final GameRepository gameRepository;
 
-    public GamePlayerController(GamePlayerService gamePlayerService) {
+    public GamePlayerController(GamePlayerService gamePlayerService, GameRepository gameRepository) {
         this.gamePlayerService = gamePlayerService;
+        this.gameRepository = gameRepository;
     }
 
     @Data
@@ -39,7 +45,6 @@ public class GamePlayerController {
         @NotBlank(message = "Rank is required")
         private String rank;
 
-        @NotBlank(message = "Role is required")
         private String role;
 
         @NotBlank(message = "Server is required")
@@ -68,6 +73,26 @@ public class GamePlayerController {
     @Operation(summary = "Create a new game player")
     public ResponseEntity<ApiResponse<GamePlayer>> createGamePlayer(
             @Valid @RequestBody GamePlayerRequest request) {
+        // Kiểm tra user đã có player chưa
+        if (!gamePlayerService.getGamePlayersByUser(request.getUserId()).isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(false, "User đã đăng ký làm player rồi!", null));
+        }
+        Game game = gameRepository.findById(request.getGameId())
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
+
+        if (game.getHasRoles()) {
+            if (request.getRole() == null || request.getRole().trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Role is required for this game", null));
+            }
+            if (game.getAvailableRoles() != null && 
+                !Arrays.asList(game.getAvailableRoles()).contains(request.getRole())) {
+                return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(false, "Invalid role for this game", null));
+            }
+        }
+
         GamePlayer gamePlayer = gamePlayerService.createGamePlayer(
             request.getUserId(),
             request.getGameId(),
@@ -193,5 +218,11 @@ public class GamePlayerController {
             @RequestParam @Min(0) @Max(100) Integer winRate) {
         GamePlayer gamePlayer = gamePlayerService.updateStats(id, totalGames, winRate);
         return ResponseEntity.ok(new ApiResponse<>(true, "Game player stats updated successfully", gamePlayer));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<GamePlayer>>> getAllGamePlayers() {
+        List<GamePlayer> gamePlayers = gamePlayerService.getAllGamePlayers();
+        return ResponseEntity.ok(new ApiResponse<>(true, "All game players retrieved successfully", gamePlayers));
     }
 } 

@@ -18,7 +18,7 @@ public class Payment {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "game_player_id", nullable = false)
+    @JoinColumn(name = "game_player_id", nullable = true)
     private GamePlayer gamePlayer;
 
     @Column(nullable = false)
@@ -48,4 +48,16 @@ public class Payment {
     @ManyToOne
     @JoinColumn(name = "promotion_id")
     private Promotion promotion;
+
+    @Column(nullable = false)
+    private String type; // TOPUP, HIRE, WITHDRAW, DONATE, ...
+
+    @Column
+    private java.time.LocalDateTime startTime;
+
+    @Column
+    private java.time.LocalDateTime endTime;
+
+    @Column
+    private String hireStatus; // ACTIVE, COMPLETED, CANCELED, ...
 } 

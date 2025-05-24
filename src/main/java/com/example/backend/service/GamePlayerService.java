@@ -155,4 +155,8 @@ public class GamePlayerService {
         gamePlayer.setWinRate(winRate);
         return gamePlayerRepository.save(gamePlayer);
     }
+
+    public List<GamePlayer> getAllGamePlayers() {
+        return gamePlayerRepository.findAll();
+    }
 } 

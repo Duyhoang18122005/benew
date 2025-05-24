@@ -2,6 +2,8 @@ package com.example.backend.controller;
 
 import com.example.backend.entity.Payment;
 import com.example.backend.service.PaymentService;
+import com.example.backend.service.UserService;
+import com.example.backend.entity.User;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.PaymentException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,7 +18,9 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.example.backend.repository.PaymentRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,9 +32,13 @@ import java.util.List;
 @Tag(name = "Payment", description = "Payment management APIs")
 public class PaymentController {
     private final PaymentService paymentService;
+    private final UserService userService;
+    private final PaymentRepository paymentRepository;
 
-    public PaymentController(PaymentService paymentService) {
+    public PaymentController(PaymentService paymentService, UserService userService, PaymentRepository paymentRepository) {
         this.paymentService = paymentService;
+        this.userService = userService;
+        this.paymentRepository = paymentRepository;
     }
 
     @Operation(summary = "Create a new payment")
@@ -40,9 +48,10 @@ public class PaymentController {
             @Valid @RequestBody PaymentRequest request,
             Authentication authentication) {
         try {
+            User user = userService.findByUsername(authentication.getName());
             Payment payment = paymentService.createPayment(
                     request.getGamePlayerId(),
-                    Long.parseLong(authentication.getName()),
+                    user.getId(),
                     request.getAmount(),
                     request.getCurrency(),
                     request.getPaymentMethod()
@@ -85,8 +94,8 @@ public class PaymentController {
     @GetMapping("/user")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Payment>> getUserPayments(Authentication authentication) {
-        return ResponseEntity.ok(paymentService.getUserPayments(
-                Long.parseLong(authentication.getName())));
+        User user = userService.findByUsername(authentication.getName());
+        return ResponseEntity.ok(paymentService.getUserPayments(user.getId()));
     }
 
     @Operation(summary = "Get game player payments")
@@ -109,6 +118,77 @@ public class PaymentController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
         return ResponseEntity.ok(paymentService.getPaymentsByDateRange(start, end));
+    }
+
+    @PostMapping("/topup")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional
+    public ResponseEntity<?> topUp(@RequestBody TopUpRequest request, Authentication authentication) {
+        User user = userService.findByUsername(authentication.getName());
+        user.setWalletBalance(user.getWalletBalance().add(request.getAmount()));
+        userService.save(user);
+        Payment payment = new Payment();
+        payment.setUser(user);
+        payment.setAmount(request.getAmount());
+        payment.setCurrency("VND");
+        payment.setStatus("COMPLETED");
+        payment.setPaymentMethod("TOPUP");
+        payment.setType("TOPUP");
+        payment.setCreatedAt(java.time.LocalDateTime.now());
+        paymentRepository.save(payment);
+        return ResponseEntity.ok("Nạp tiền thành công");
+    }
+
+    @PostMapping("/hire")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional
+    public ResponseEntity<?> hirePlayer(@RequestBody HireRequest request, Authentication authentication) {
+        User user = userService.findByUsername(authentication.getName());
+        User player = userService.findById(request.getPlayerId());
+        BigDecimal amount = request.getAmount();
+        if (user.getWalletBalance().compareTo(amount) < 0) {
+            return ResponseEntity.badRequest().body("Số dư không đủ");
+        }
+        user.setWalletBalance(user.getWalletBalance().subtract(amount));
+        player.setWalletBalance(player.getWalletBalance().add(amount));
+        userService.save(user);
+        userService.save(player);
+        Payment payment = new Payment();
+        payment.setUser(user);
+        payment.setAmount(amount);
+        payment.setCurrency("VND");
+        payment.setStatus("COMPLETED");
+        payment.setPaymentMethod("HIRE");
+        payment.setType("HIRE");
+        payment.setCreatedAt(java.time.LocalDateTime.now());
+        payment.setStartTime(request.getStartTime());
+        payment.setEndTime(request.getEndTime());
+        payment.setHireStatus(request.getHireStatus() != null ? request.getHireStatus() : "ACTIVE");
+        paymentRepository.save(payment);
+        return ResponseEntity.ok("Thuê player thành công");
+    }
+
+    @PostMapping("/withdraw")
+    @PreAuthorize("hasRole('PLAYER')")
+    @Transactional
+    public ResponseEntity<?> withdraw(@RequestBody WithdrawRequest request, Authentication authentication) {
+        User player = userService.findByUsername(authentication.getName());
+        BigDecimal amount = request.getAmount();
+        if (player.getWalletBalance().compareTo(amount) < 0) {
+            return ResponseEntity.badRequest().body("Số dư không đủ");
+        }
+        player.setWalletBalance(player.getWalletBalance().subtract(amount));
+        userService.save(player);
+        Payment payment = new Payment();
+        payment.setUser(player);
+        payment.setAmount(amount);
+        payment.setCurrency("VND");
+        payment.setStatus("COMPLETED");
+        payment.setPaymentMethod("WITHDRAW");
+        payment.setType("WITHDRAW");
+        payment.setCreatedAt(java.time.LocalDateTime.now());
+        paymentRepository.save(payment);
+        return ResponseEntity.ok("Rút tiền thành công");
     }
 }
 
@@ -138,4 +218,30 @@ class ProcessPaymentRequest {
 class RefundRequest {
     @NotBlank(message = "Reason is required")
     private String reason;
+}
+
+@Data
+class TopUpRequest {
+    @NotNull
+    @Positive
+    private BigDecimal amount;
+}
+
+@Data
+class HireRequest {
+    @NotNull
+    private Long playerId;
+    @NotNull
+    @Positive
+    private BigDecimal amount;
+    private java.time.LocalDateTime startTime;
+    private java.time.LocalDateTime endTime;
+    private String hireStatus; // ACTIVE, COMPLETED, CANCELED, ...
+}
+
+@Data
+class WithdrawRequest {
+    @NotNull
+    @Positive
+    private BigDecimal amount;
 } 

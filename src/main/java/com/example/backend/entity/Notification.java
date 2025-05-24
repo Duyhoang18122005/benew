@@ -25,7 +25,7 @@ public class Notification {
     @Column(nullable = false)
     private String type; // SYSTEM, PAYMENT, SCHEDULE, REVIEW, REPORT
 
-    @Column(nullable = false)
+    @Column(name = "is_read", nullable = false)
     private Boolean read;
 
     @Column(nullable = false)
