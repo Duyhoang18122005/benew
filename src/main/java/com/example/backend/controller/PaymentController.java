@@ -124,19 +124,36 @@ public class PaymentController {
     @PreAuthorize("isAuthenticated()")
     @Transactional
     public ResponseEntity<?> topUp(@RequestBody TopUpRequest request, Authentication authentication) {
-        User user = userService.findByUsername(authentication.getName());
-        user.setWalletBalance(user.getWalletBalance().add(request.getAmount()));
-        userService.save(user);
-        Payment payment = new Payment();
-        payment.setUser(user);
-        payment.setAmount(request.getAmount());
-        payment.setCurrency("VND");
-        payment.setStatus("COMPLETED");
-        payment.setPaymentMethod("TOPUP");
-        payment.setType("TOPUP");
-        payment.setCreatedAt(java.time.LocalDateTime.now());
-        paymentRepository.save(payment);
-        return ResponseEntity.ok("Nạp tiền thành công");
+        try {
+            User user = userService.findByUsername(authentication.getName());
+            if (user == null) {
+                return ResponseEntity.badRequest().body("User not found");
+            }
+
+            // Validate amount
+            if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                return ResponseEntity.badRequest().body("Amount must be greater than 0");
+            }
+
+            // Update wallet balance
+            user.setWalletBalance(user.getWalletBalance().add(request.getAmount()));
+            user = userService.save(user);
+
+            // Create payment record
+            Payment payment = new Payment();
+            payment.setUser(user);
+            payment.setAmount(request.getAmount());
+            payment.setCurrency("VND");
+            payment.setStatus("COMPLETED");
+            payment.setPaymentMethod("TOPUP");
+            payment.setType("TOPUP");
+            payment.setCreatedAt(java.time.LocalDateTime.now());
+            paymentRepository.save(payment);
+
+            return ResponseEntity.ok("Nạp tiền thành công");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi khi nạp tiền: " + e.getMessage());
+        }
     }
 
     @PostMapping("/hire")
@@ -189,6 +206,14 @@ public class PaymentController {
         payment.setCreatedAt(java.time.LocalDateTime.now());
         paymentRepository.save(payment);
         return ResponseEntity.ok("Rút tiền thành công");
+    }
+
+    @Operation(summary = "Get user wallet balance")
+    @GetMapping("/wallet-balance")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<BigDecimal> getWalletBalance(Authentication authentication) {
+        User user = userService.findByUsername(authentication.getName());
+        return ResponseEntity.ok(user.getWalletBalance());
     }
 }
 

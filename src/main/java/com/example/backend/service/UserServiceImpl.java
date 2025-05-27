@@ -29,7 +29,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
-                new ArrayList<>()
+                user.getRoles().stream()
+                    .map(role -> new org.springframework.security.core.authority.SimpleGrantedAuthority(role))
+                    .collect(java.util.stream.Collectors.toList())
         );
     }
 
@@ -41,7 +43,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     public User save(User user) {
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        // Chỉ mã hóa nếu password chưa được mã hóa (BCrypt hash luôn bắt đầu bằng $2a$ hoặc $2b$)
+        if (!user.getPassword().startsWith("$2a$") && !user.getPassword().startsWith("$2b$")) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         return userRepository.save(user);
     }
 
