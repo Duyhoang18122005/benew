@@ -18,7 +18,11 @@ public class Payment {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "game_player_id", nullable = true)
+    @JoinColumn(name = "player_id")
+    private User player;
+
+    @ManyToOne
+    @JoinColumn(name = "game_player_id")
     private GamePlayer gamePlayer;
 
     @Column(nullable = false)
@@ -60,4 +64,9 @@ public class Payment {
 
     @Column
     private String hireStatus; // ACTIVE, COMPLETED, CANCELED, ...
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 } 

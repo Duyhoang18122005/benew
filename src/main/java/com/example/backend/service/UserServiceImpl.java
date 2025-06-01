@@ -45,7 +45,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public User save(User user) {
         // Chỉ mã hóa nếu password chưa được mã hóa (BCrypt hash luôn bắt đầu bằng $2a$ hoặc $2b$)
         if (!user.getPassword().startsWith("$2a$") && !user.getPassword().startsWith("$2b$")) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         return userRepository.save(user);
     }

@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/game-players").permitAll()
                 .requestMatchers("/api/games").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/players/*/followers/count").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

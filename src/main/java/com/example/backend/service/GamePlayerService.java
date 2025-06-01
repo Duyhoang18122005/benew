@@ -159,4 +159,56 @@ public class GamePlayerService {
     public List<GamePlayer> getAllGamePlayers() {
         return gamePlayerRepository.findAll();
     }
+
+    public GamePlayer findById(Long id) {
+        return gamePlayerRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Game player not found with id: " + id));
+    }
+
+    public List<GamePlayer> findAll() {
+        return gamePlayerRepository.findAll();
+    }
+
+    public List<GamePlayer> findByStatus(String status) {
+        return gamePlayerRepository.findByStatus(status);
+    }
+
+    public List<GamePlayer> findByGameId(Long gameId) {
+        return gamePlayerRepository.findByGameId(gameId);
+    }
+
+    public List<GamePlayer> findByUserId(Long userId) {
+        return gamePlayerRepository.findByUserId(userId);
+    }
+
+    public GamePlayer save(GamePlayer gamePlayer) {
+        return gamePlayerRepository.save(gamePlayer);
+    }
+
+    public void deleteById(Long id) {
+        gamePlayerRepository.deleteById(id);
+    }
+
+    public GamePlayer hirePlayer(Long id, User user) {
+        GamePlayer gamePlayer = findById(id);
+        if (!"AVAILABLE".equals(gamePlayer.getStatus())) {
+            throw new RuntimeException("Game player is not available for hire");
+        }
+
+        gamePlayer.setStatus("HIRED");
+        gamePlayer.setHiredBy(user);
+        gamePlayer.setHireDate(LocalDate.now());
+        gamePlayer.setReturnDate(LocalDate.now().plusMonths(1)); // Default 1-month hire period
+
+        return gamePlayerRepository.save(gamePlayer);
+    }
+
+    public GamePlayer returnPlayer(Long id) {
+        GamePlayer gamePlayer = findById(id);
+        gamePlayer.setStatus("AVAILABLE");
+        gamePlayer.setHiredBy(null);
+        gamePlayer.setHireDate(null);
+        gamePlayer.setReturnDate(null);
+        return gamePlayerRepository.save(gamePlayer);
+    }
 } 

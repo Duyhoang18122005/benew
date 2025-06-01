@@ -86,10 +86,20 @@ public class GamePlayerController {
                 return ResponseEntity.badRequest()
                     .body(new ApiResponse<>(false, "Role is required for this game", null));
             }
-            if (game.getAvailableRoles() != null && 
-                !Arrays.asList(game.getAvailableRoles()).contains(request.getRole())) {
+            // Normalize role by trimming and converting to uppercase
+            String normalizedRole = request.getRole().trim().toUpperCase();
+            if (game.getAvailableRoles() != null) {
+                boolean isValidRole = game.getAvailableRoles().stream()
+                    .map(String::trim)
+                    .map(String::toUpperCase)
+                    .anyMatch(role -> role.equals(normalizedRole));
+                if (!isValidRole) {
                 return ResponseEntity.badRequest()
-                    .body(new ApiResponse<>(false, "Invalid role for this game", null));
+                        .body(new ApiResponse<>(false, "Invalid role for this game. Available roles: " + 
+                            String.join(", ", game.getAvailableRoles()), null));
+                }
+                // Use normalized role for saving
+                request.setRole(normalizedRole);
             }
         }
 

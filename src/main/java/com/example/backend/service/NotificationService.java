@@ -29,7 +29,7 @@ public class NotificationService {
 
         Notification notification = new Notification();
         notification.setUser(user);
-        notification.setTitle(title);
+        notification.setTitle(title != null ? title : "");
         notification.setMessage(message);
         notification.setType(type);
         notification.setRead(false);
@@ -61,7 +61,7 @@ public class NotificationService {
     }
 
     public List<Notification> getUnreadNotifications(Long userId) {
-        return notificationRepository.findByUserIdAndRead(userId, false);
+        return notificationRepository.findByUserIdAndIsRead(userId, false);
     }
 
     public List<Notification> getNotificationsByType(Long userId, String type) {

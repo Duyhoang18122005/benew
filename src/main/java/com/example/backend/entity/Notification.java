@@ -4,36 +4,39 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
 
-@Data
 @Entity
 @Table(name = "notifications")
+@Data
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id")
     private User user;
 
     @Column(nullable = false)
-    private String title;
+    private String type; // FOLLOW, BLOCK, etc.
 
     @Column(nullable = false)
     private String message;
 
     @Column(nullable = false)
-    private String type; // SYSTEM, PAYMENT, SCHEDULE, REVIEW, REPORT
-
-    @Column(name = "is_read", nullable = false)
-    private Boolean read;
+    private boolean isRead = false;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column
+    // New fields
+    @Column(nullable = false)
+    private String title = "";
     private String actionUrl;
+    private String status;
 
-    @Column
-    private String status; // ACTIVE, ARCHIVED, DELETED
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (title == null) title = "";
+    }
 } 

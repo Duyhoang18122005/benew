@@ -13,4 +13,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByStatus(String status);
     List<Payment> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
     List<Payment> findByUserIdAndStatus(Long userId, String status);
+    List<Payment> findByUserIdAndTypeOrderByCreatedAtDesc(Long userId, String type);
+    List<Payment> findByPlayerIdAndTypeOrderByCreatedAtDesc(Long playerId, String type);
+    List<Payment> findByPlayerIdAndHireStatusAndEndTimeAfter(Long playerId, String hireStatus, LocalDateTime time);
 } 
