@@ -5,6 +5,8 @@ import com.example.backend.entity.Message;
 import com.example.backend.entity.User;
 import com.example.backend.repository.ConversationRepository;
 import com.example.backend.repository.MessageRepository;
+import com.example.backend.service.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,16 +18,22 @@ public class MessageServiceImpl implements MessageService {
 
     private final MessageRepository messageRepository;
     private final ConversationRepository conversationRepository;
+    private final NotificationService notificationService;
 
-    public MessageServiceImpl(MessageRepository messageRepository, 
-                            ConversationRepository conversationRepository) {
+    @Autowired
+    public MessageServiceImpl(MessageRepository messageRepository,
+                             ConversationRepository conversationRepository,
+                             NotificationService notificationService) {
         this.messageRepository = messageRepository;
         this.conversationRepository = conversationRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
     @Transactional
     public Message sendMessage(User sender, User receiver, String content) {
+        System.out.println("[MessageServiceImpl] BẮT ĐẦU sendMessage: sender=" + sender.getId() + ", receiver=" + receiver.getId());
+        
         Message message = new Message();
         message.setSender(sender);
         message.setReceiver(receiver);
@@ -33,15 +41,38 @@ public class MessageServiceImpl implements MessageService {
         message.setTimestamp(LocalDateTime.now());
         
         // Update or create conversation
+        System.out.println("[MessageServiceImpl] Tìm hoặc tạo conversation");
         Conversation conversation = getOrCreateConversation(sender, receiver);
+        System.out.println("[MessageServiceImpl] Conversation ID: " + conversation.getId());
+        
         conversation.setLastMessageContent(content);
         conversation.setLastMessageTime(message.getTimestamp());
         if (!sender.equals(conversation.getUser1())) {
             conversation.setUnreadCount(conversation.getUnreadCount() + 1);
         }
+        System.out.println("[MessageServiceImpl] Lưu conversation");
         conversationRepository.save(conversation);
+        System.out.println("[MessageServiceImpl] Đã lưu conversation");
+
+        // Gửi push notification cho người nhận nếu có deviceToken
+        if (receiver.getDeviceToken() != null && !receiver.getDeviceToken().isEmpty()) {
+            System.out.println("[MessageServiceImpl] BẮT ĐẦU gửi push notification cho userId=" + receiver.getId() + ", deviceToken=" + receiver.getDeviceToken());
+            notificationService.sendPushNotification(
+                receiver.getDeviceToken(),
+                "Bạn có tin nhắn mới!",
+                content,
+                null
+            );
+            System.out.println("[MessageServiceImpl] ĐÃ GỌI sendPushNotification cho userId=" + receiver.getId());
+        } else {
+            System.out.println("[MessageServiceImpl] KHÔNG gửi push notification vì deviceToken rỗng cho userId=" + receiver.getId());
+        }
+
+        System.out.println("[MessageServiceImpl] Lưu message");
+        Message savedMessage = messageRepository.save(message);
+        System.out.println("[MessageServiceImpl] Đã lưu message với ID: " + savedMessage.getId());
         
-        return messageRepository.save(message);
+        return savedMessage;
     }
 
     @Override
@@ -113,5 +144,17 @@ public class MessageServiceImpl implements MessageService {
             conversation = conversationRepository.save(conversation);
         }
         return conversation;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Message> getMessagesBySender(User sender) {
+        return messageRepository.findBySender(sender);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Message> getMessagesByReceiver(User receiver) {
+        return messageRepository.findByReceiver(receiver);
     }
 } 

@@ -18,6 +18,7 @@ import com.example.backend.entity.UserBlock;
 import com.example.backend.entity.Notification;
 import com.example.backend.repository.UserBlockRepository;
 import com.example.backend.repository.NotificationRepository;
+import com.example.backend.service.NotificationService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -54,15 +55,18 @@ public class PaymentController {
     private final PaymentRepository paymentRepository;
     private final QRCodeService qrCodeService;
     private final PlayerReviewRepository playerReviewRepository;
+    private final NotificationService notificationService;
 
     public PaymentController(PaymentService paymentService, UserService userService, 
                            PaymentRepository paymentRepository, QRCodeService qrCodeService,
-                           PlayerReviewRepository playerReviewRepository) {
+                           PlayerReviewRepository playerReviewRepository,
+                           NotificationService notificationService) {
         this.paymentService = paymentService;
         this.userService = userService;
         this.paymentRepository = paymentRepository;
         this.qrCodeService = qrCodeService;
         this.playerReviewRepository = playerReviewRepository;
+        this.notificationService = notificationService;
     }
 
     @Operation(summary = "Create a new payment")
@@ -173,6 +177,16 @@ public class PaymentController {
             payment.setType("TOPUP");
             payment.setCreatedAt(java.time.LocalDateTime.now());
             paymentRepository.save(payment);
+
+            // Gửi push notification khi nạp tiền thành công
+            if (user.getDeviceToken() != null && !user.getDeviceToken().isEmpty()) {
+                notificationService.sendPushNotification(
+                    user.getDeviceToken(),
+                    "Nạp tiền thành công!",
+                    "Bạn vừa nạp thành công " + request.getAmount() + " vào tài khoản.",
+                    null
+                );
+            }
 
             return ResponseEntity.ok("Nạp tiền thành công");
         } catch (Exception e) {

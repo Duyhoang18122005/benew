@@ -1,7 +1,9 @@
 package com.example.backend.controller;
 
 import com.example.backend.entity.Notification;
+import com.example.backend.entity.User;
 import com.example.backend.service.NotificationService;
+import com.example.backend.service.UserService;
 import com.example.backend.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +13,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -23,9 +26,11 @@ import java.util.List;
 @Tag(name = "Notification", description = "Notification management APIs")
 public class NotificationController {
     private final NotificationService notificationService;
+    private final UserService userService;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService, UserService userService) {
         this.notificationService = notificationService;
+        this.userService = userService;
     }
 
     @Operation(summary = "Create a new notification")
@@ -107,6 +112,46 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getRecentNotifications(
                 Long.parseLong(authentication.getName())));
     }
+
+    @Operation(summary = "Update device token for push notifications")
+    @PostMapping("/device-token")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> updateDeviceToken(
+            @Valid @RequestBody DeviceTokenRequest request,
+            Authentication authentication) {
+        System.out.println("[NotificationController] ====== START updateDeviceToken ======");
+        System.out.println("[NotificationController] Request body: " + request);
+        System.out.println("[NotificationController] Authentication: " + authentication);
+        System.out.println("[NotificationController] Authentication name: " + authentication.getName());
+        System.out.println("[NotificationController] Authentication authorities: " + authentication.getAuthorities());
+        
+        try {
+            String username = authentication.getName();
+            System.out.println("[NotificationController] username từ authentication: " + username);
+            User user = userService.findByUsername(username);
+            System.out.println("[NotificationController] Found user: " + user);
+            System.out.println("[NotificationController] Current device token: " + user.getDeviceToken());
+            System.out.println("[NotificationController] New device token: " + request.getDeviceToken());
+            
+            Long userId = user.getId();
+            System.out.println("[NotificationController] userId từ userService: " + userId);
+            notificationService.updateDeviceToken(userId, request.getDeviceToken());
+            System.out.println("[NotificationController] Đã gọi service cập nhật device token thành công");
+            System.out.println("[NotificationController] ====== END updateDeviceToken ======");
+            return ResponseEntity.ok().build();
+        } catch (ResourceNotFoundException e) {
+            System.out.println("[NotificationController] ResourceNotFoundException: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("[NotificationController] ====== END updateDeviceToken with error ======");
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            System.out.println("[NotificationController] Exception: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("[NotificationController] ====== END updateDeviceToken with error ======");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred: " + e.getMessage());
+        }
+    }
 }
 
 @Data
@@ -124,4 +169,10 @@ class NotificationRequest {
     private String type;
 
     private String actionUrl;
+}
+
+@Data
+class DeviceTokenRequest {
+    @NotBlank(message = "Device token is required")
+    private String deviceToken;
 } 

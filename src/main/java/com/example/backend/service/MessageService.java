@@ -14,4 +14,6 @@ public interface MessageService {
     void markAllMessagesAsRead(User user1, User user2);
     List<Conversation> getUserConversations(User user);
     Conversation getOrCreateConversation(User user1, User user2);
+    List<Message> getMessagesBySender(User sender);
+    List<Message> getMessagesByReceiver(User receiver);
 } 

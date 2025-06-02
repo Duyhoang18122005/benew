@@ -6,6 +6,7 @@ import com.example.backend.repository.*;
 import com.example.backend.service.PlayerStatsService;
 import com.example.backend.service.UserService;
 import com.example.backend.service.GamePlayerService;
+import com.example.backend.service.NotificationService;
 import com.example.backend.exception.ResourceNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,6 +44,7 @@ public class PlayerController {
     private final GamePlayerService gamePlayerService;
     private final PaymentRepository paymentRepository;
     private final GameRepository gameRepository;
+    private final NotificationService notificationService;
 
     private static final int MAX_FOLLOWING = 1000; // Giới hạn số người theo dõi
 
@@ -54,7 +56,8 @@ public class PlayerController {
                           PlayerReviewRepository playerReviewRepository,
                           GamePlayerService gamePlayerService,
                           PaymentRepository paymentRepository,
-                          GameRepository gameRepository) {
+                          GameRepository gameRepository,
+                          NotificationService notificationService) {
         this.userService = userService;
         this.playerStatsService = playerStatsService;
         this.playerFollowRepository = playerFollowRepository;
@@ -64,6 +67,7 @@ public class PlayerController {
         this.gamePlayerService = gamePlayerService;
         this.paymentRepository = paymentRepository;
         this.gameRepository = gameRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping("/{playerId}/stats")
@@ -109,15 +113,16 @@ public class PlayerController {
         follow.setGamePlayer(gamePlayer);
         playerFollowRepository.save(follow);
 
-        // Tạo thông báo
-        Notification notification = new Notification();
-        notification.setUser(gamePlayer.getUser());
-        notification.setType("FOLLOW");
-        notification.setMessage(follower.getUsername() + " đã theo dõi bạn");
-        notification.setTitle("Người theo dõi mới");
-        notification.setActionUrl("/players/" + gamePlayerId);
-        notification.setStatus("UNREAD");
-        notificationRepository.save(notification);
+        // Gửi push notification cho user được follow
+        User followedUser = gamePlayer.getUser();
+        if (followedUser.getDeviceToken() != null && !followedUser.getDeviceToken().isEmpty()) {
+            notificationService.sendPushNotification(
+                followedUser.getDeviceToken(),
+                "Bạn có người theo dõi mới!",
+                follower.getUsername() + " vừa theo dõi bạn.",
+                null
+            );
+        }
 
         return ResponseEntity.ok("Theo dõi thành công");
     }
@@ -409,9 +414,9 @@ public class PlayerController {
         gamePlayer.setPricePerHour(request.getPricePerHour());
         gamePlayer.setDescription(request.getDescription());
         gamePlayer.setStatus("AVAILABLE");
-}
+    }
 
-@Data
+    @Data
     public static class GamePlayerRequest {
         @NotNull(message = "User ID is required")
         private Long userId;

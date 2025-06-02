@@ -17,6 +17,8 @@ import java.util.Arrays;
 import com.example.backend.entity.Game;
 import com.example.backend.repository.GameRepository;
 import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.service.UserService;
+import com.example.backend.entity.User;
 
 @RestController
 @RequestMapping("/api/game-players")
@@ -25,10 +27,12 @@ import com.example.backend.exception.ResourceNotFoundException;
 public class GamePlayerController {
     private final GamePlayerService gamePlayerService;
     private final GameRepository gameRepository;
+    private final UserService userService;
 
-    public GamePlayerController(GamePlayerService gamePlayerService, GameRepository gameRepository) {
+    public GamePlayerController(GamePlayerService gamePlayerService, GameRepository gameRepository, UserService userService) {
         this.gamePlayerService = gamePlayerService;
         this.gameRepository = gameRepository;
+        this.userService = userService;
     }
 
     @Data
@@ -78,6 +82,13 @@ public class GamePlayerController {
             return ResponseEntity.badRequest()
                 .body(new ApiResponse<>(false, "User đã đăng ký làm player rồi!", null));
         }
+        User user = userService.findById(request.getUserId());
+        // Kiểm tra thông tin bắt buộc
+        if (user.getFullName() == null || user.getDateOfBirth() == null ||
+            user.getPhoneNumber() == null || user.getAddress() == null) {
+            return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(false, "Bạn cần cập nhật đầy đủ thông tin cá nhân trước khi đăng ký làm player!", null));
+        }
         Game game = gameRepository.findById(request.getGameId())
                 .orElseThrow(() -> new ResourceNotFoundException("Game not found"));
 
@@ -102,9 +113,9 @@ public class GamePlayerController {
                 request.setRole(normalizedRole);
             }
         }
-
+        // Tạo player từ thông tin user
         GamePlayer gamePlayer = gamePlayerService.createGamePlayer(
-            request.getUserId(),
+            user.getId(),
             request.getGameId(),
             request.getUsername(),
             request.getRank(),
